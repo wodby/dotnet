@@ -1,0 +1,45 @@
+services:
+  nginx:
+    image: wodby/nginx
+    environment:
+      DEBUG: 1
+      NGINX_BACKEND_HOST: dotnet
+      NGINX_BACKEND_PORT: 8080
+      NGINX_VHOST_PRESET: http-proxy
+      NGINX_SERVER_ROOT: /usr/src/app
+    depends_on:
+      - dotnet
+
+  dotnet:
+    pull_policy: never
+    build:
+      no_cache: true
+      context: ./
+      args:
+        SDK_IMAGE: $SDK_IMAGE
+        DOTNET_IMAGE: $DOTNET_IMAGE
+    environment:
+      SSH_DISABLE_STRICT_KEY_CHECKING: 1
+      DEBUG: 1
+      DOTNET_VERSION: $DOTNET_VERSION
+    volumes:
+      - ./tests.sh:/usr/local/bin/tests.sh
+      - ./id_rsa:/home/wodby/.ssh/id_rsa
+    depends_on:
+      - sshd
+
+  sshd:
+    image: $DOTNET_IMAGE
+    command: sudo /usr/sbin/sshd -De
+    volumes:
+    - ./authorized_keys:/home/wodby/.ssh/authorized_keys
+    environment:
+      DEBUG: 1
+
+  crond:
+    image: $DOTNET_IMAGE
+    command: sudo -E crond -f -d 0
+    volumes:
+      - ./crontab:/etc/crontabs/wodby
+    depends_on:
+      - sshd

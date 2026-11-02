@@ -1,0 +1,23 @@
+#!/bin/sh
+# Start the published application in APP_ROOT. DOTNET_APP names its entry assembly;
+# otherwise the only *.runtimeconfig.json there identifies it, as `dotnet publish` writes
+# that file for the entry project alone.
+set -eu
+cd "${APP_ROOT:-/usr/src/app}"
+if [ -n "${DOTNET_APP:-}" ]; then
+    exec dotnet "${DOTNET_APP}" "$@"
+fi
+found=
+for config in *.runtimeconfig.json; do
+    [ -f "${config}" ] || continue
+    if [ -n "${found}" ]; then
+        echo "dotnet-app: more than one *.runtimeconfig.json in $(pwd); set DOTNET_APP to the entry assembly" >&2
+        exit 1
+    fi
+    found="${config%.runtimeconfig.json}.dll"
+done
+if [ -z "${found}" ]; then
+    echo "dotnet-app: no published application in $(pwd); publish one there or set DOTNET_APP" >&2
+    exit 1
+fi
+exec dotnet "${found}" "$@"

@@ -1,0 +1,76 @@
+#!/bin/sh
+# Restore and run the checkout's .NET project in a development workspace without
+# rewriting tracked files.
+set -eu
+cd "${APP_ROOT:-/usr/src/app}"
+state=$(workspace-path)
+# NuGet keeps packages in the container's home by default, which is lost whenever the
+# container restarts, and preparation runs in a container of its own. Keep them with the
+# checkout instead, so preparation's downloads reach the application. A cache set to
+# anything else stays as set.
+export NUGET_PACKAGES="${NUGET_PACKAGES:-$state/nuget}"
+export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
+# A workspace is for development whatever the environment's type; a value set on the
+# service stays as set. ASP.NET Core reads DOTNET_ENVIRONMENT when ASPNETCORE_ENVIRONMENT is unset.
+export DOTNET_ENVIRONMENT="${DOTNET_ENVIRONMENT:-Development}"
+export ASPNETCORE_HTTP_PORTS="${ASPNETCORE_HTTP_PORTS:-8080}"
+# MSBuild reads environment variables as properties: with a NuGet lock file in the
+# checkout, every restore fails rather than rewrites it.
+if [ -n "$(find . \( -path ./.git -o -path "./.wodby-workspace" -o -name bin -o -name obj -o -name node_modules \) -prune -o -name packages.lock.json -print | head -n 1)" ]; then
+ export RestoreLockedMode=true
+fi
+if [ "${1:-}" = start ] && [ -n "${WORKSPACE_DOTNET_COMMAND:-}" ]; then exec sh -ec "$WORKSPACE_DOTNET_COMMAND"; fi
+
+# Prints the project to run: WORKSPACE_DOTNET_PROJECT, else the only project file at the
+# checkout's root, else the only one in a src/<name>/ directory. When there are several,
+# the only one that is runnable (a web or worker SDK project, or an executable) is chosen.
+project() {
+ if [ -n "${WORKSPACE_DOTNET_PROJECT:-}" ]; then
+  [ -e "$WORKSPACE_DOTNET_PROJECT" ] || { echo "workspace-dotnet: WORKSPACE_DOTNET_PROJECT $WORKSPACE_DOTNET_PROJECT does not exist" >&2; return 1; }
+  printf '%s\n' "$WORKSPACE_DOTNET_PROJECT"
+  return
+ fi
+ found=$(find . -maxdepth 1 -type f \( -name '*.csproj' -o -name '*.fsproj' -o -name '*.vbproj' \) | sort)
+ if [ -z "$found" ] && [ -d src ]; then
+  found=$(find ./src -mindepth 2 -maxdepth 2 -type f \( -name '*.csproj' -o -name '*.fsproj' -o -name '*.vbproj' \) | sort)
+ fi
+ if [ "$(printf '%s' "$found" | grep -c .)" -gt 1 ]; then
+  found=$(printf '%s\n' "$found" | while read -r file; do
+   if grep -qE 'Sdk="Microsoft\.NET\.Sdk\.(Web|Worker)"|<OutputType>[[:space:]]*(Exe|WinExe)[[:space:]]*<' "$file"; then printf '%s\n' "$file"; fi
+  done)
+ fi
+ count=$(printf '%s' "$found" | grep -c . || true)
+ if [ "$count" != 1 ]; then
+  echo "workspace-dotnet: found $count runnable projects at the checkout's root or in src/<name>/; set WORKSPACE_DOTNET_PROJECT to the project to run" >&2
+  return 1
+ fi
+ printf '%s\n' "${found#./}"
+}
+
+case "${1:-}" in
+ prepare)
+  run=$(project)
+  # Restore the solution when there is one, so its test projects build too.
+  target=$run
+  if [ -z "${WORKSPACE_DOTNET_PROJECT:-}" ]; then
+   solutions=$(find . -maxdepth 1 -type f \( -name '*.sln' -o -name '*.slnx' \))
+   if [ "$(printf '%s' "$solutions" | grep -c .)" = 1 ]; then target=${solutions#./}; fi
+  fi
+  if [ -f .config/dotnet-tools.json ] || [ -f dotnet-tools.json ]; then dotnet tool restore; fi
+  dotnet restore "$target" ;;
+ start)
+  run=$(project)
+  if [ "${WORKSPACE_DOTNET_WATCH:-1}" = 0 ]; then
+   exec dotnet run --project "$run" --no-launch-profile
+  fi
+  # The checkout is a shared volume that other containers write to, where file events
+  # don't arrive, so dotnet watch polls it. A change it can't apply to the running
+  # application restarts it. Browser refresh needs a connection from the developer's
+  # browser to the container that a workspace doesn't route, so it is off.
+  export DOTNET_USE_POLLING_FILE_WATCHER=1 \
+   DOTNET_WATCH_RESTART_ON_RUDE_EDIT=1 \
+   DOTNET_WATCH_SUPPRESS_LAUNCH_BROWSER=1 \
+   DOTNET_WATCH_SUPPRESS_BROWSER_REFRESH=1
+  exec dotnet watch --project "$run" --non-interactive --no-launch-profile ;;
+ *) echo 'Usage: workspace-dotnet prepare|start' >&2; exit 1 ;;
+esac
