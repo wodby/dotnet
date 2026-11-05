@@ -8,7 +8,6 @@
 
 - [Docker Images](#docker-images)
     - [`-dev`](#-dev)
-    - [`-dev-macos`](#-dev-macos)
     - [Supported architectures](#supported-architectures)
 - [Running an application](#running-an-application)
 - [Environment Variables](#environment-variables)
@@ -40,7 +39,6 @@ Supported tags and respective `Dockerfile` links:
 
 - `10.0`, `10`, `latest` [_(Dockerfile)_]
 - `10.0-dev`, `10-dev`, `dev` [_(Dockerfile)_]
-- `10.0-dev-macos`, `10-dev-macos` [_(Dockerfile)_]
 
 [_(Dockerfile)_]: https://github.com/wodby/dotnet/tree/master/Dockerfile
 
@@ -48,10 +46,6 @@ Supported tags and respective `Dockerfile` links:
 
 Images with `-dev` tag contain the .NET SDK, whose runtime is the same patch release as the ordinary image's, and have
 `sudo` allowed for all commands for the `wodby` user.
-
-### `-dev-macos`
-
-Same as `-dev` but the default user/group `wodby` has uid/gid `501`/`20` to match the macOS default user/group ids.
 
 ### Supported architectures
 
