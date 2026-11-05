@@ -19,13 +19,8 @@ endif
 
 ifeq ($(TAG),)
 	ifneq ($(DOTNET_DEV),)
-		ifeq ($(WODBY_USER_ID),501)
-			TAG := $(DOTNET_VER_MINOR)-dev-macos
-			NAME := $(NAME)-dev-macos
-		else
-			TAG := $(DOTNET_VER_MINOR)-dev
-			NAME := $(NAME)-dev
-		endif
+		TAG := $(DOTNET_VER_MINOR)-dev
+		NAME := $(NAME)-dev
 	else
 		TAG := $(DOTNET_VER_MINOR)
 	endif
