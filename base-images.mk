@@ -5,8 +5,8 @@ BASE_IMAGE_VERSION_SUFFIX := -alpine3.24
 RUNTIME_BASE_IMAGE_REPOSITORY := mcr.microsoft.com/dotnet/aspnet
 SDK_BASE_IMAGE_REPOSITORY := mcr.microsoft.com/dotnet/sdk
 
-BASE_IMAGE_DIGEST_aspnet_10.0.14-alpine3.24 := sha256:254fe017495996d3abcc487ffacdcce2b73affb380d3af87af12c8dff41fe0b0
-BASE_IMAGE_DIGEST_sdk_10.0.403-alpine3.24 := sha256:cc02b814237a76c4735fb6eeee87181597b5e56f2ce458a435e527674d91f4d7
+BASE_IMAGE_DIGEST_aspnet_10.0.14-alpine3.24 := sha256:486297ae006e95ee2ee3112a2c03e3d26e41fbbc64b7a29e28e7a18cc36b12bb
+BASE_IMAGE_DIGEST_sdk_10.0.403-alpine3.24 := sha256:5562fd626eec39f6f53218f9b7d7856ab7195d51d846568304fbe85071a3b6e6
 
 # Fail before building when a version or variant has no reviewed pin.
 pinned_image = $(1):$(2)@$(or $(BASE_IMAGE_DIGEST_$(notdir $(1))_$(2)),$(error No base image digest for $(1):$(2); update base-images.mk))
