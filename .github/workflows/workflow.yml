@@ -12,8 +12,8 @@ on:
   pull_request:
 
 env:
-  DOTNET10: '10.0.14'
-  DOTNET10_SDK: '10.0.403'
+  DOTNET10: '10.0.15'
+  DOTNET10_SDK: '10.0.404'
 
 jobs:
   setup:

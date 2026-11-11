@@ -1,7 +1,7 @@
 -include env_make
 
-DOTNET_VER ?= 10.0.14
-DOTNET_SDK_VER ?= 10.0.403
+DOTNET_VER ?= 10.0.15
+DOTNET_SDK_VER ?= 10.0.404
 DOTNET_VER_MINOR := $(shell v='$(DOTNET_VER)'; echo "$${v%.*}")
 
 REPO = wodby/dotnet
